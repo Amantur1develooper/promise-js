@@ -13,7 +13,7 @@
 <body>
 
     <div class="container py-5">
-        <form name="createNewsForm">
+        <form name="updateNewsForm">
             <div class="mb-4">
                 <input type="text" name="slug" class="form-control" placeholder="Slug">
             </div>
@@ -34,7 +34,6 @@
                     <span>Is published</span>
                     <input type="checkbox" name="is_published">
                 </label>
-
             </div>
             <div class="mb-4">
                 <select name="category" class="form-select">
@@ -46,79 +45,104 @@
                     <option>Choose tags</option>
                 </select>
             </div>
-            <div><button class="btn btn-primary w-100 d-block">Create</button></div>
+            <div><button class="btn btn-primary w-100 d-block">Update</button></div>
         </form>
     </div>
 
     <script>
+        const currentUrl = window.location.href
 
-        
+        const params = Object.fromEntries(new URL(currentUrl).searchParams.entries())
 
+        const news_id = +params.news
         const token = prompt('Enter token', 'caf9ff149e8327e4ddef18a334dcb637c2fdd059')
-        const newsForm = document.forms.createNewsForm
-
+        const newsForm = document.forms.updateNewsForm
         const categorySelect = newsForm.category
         const tagsSelect = newsForm.tags
 
         const setSelectValues = async (select, url) => {
             const res = await fetch(url)
             if (res.status === 200) {
-
                 const data = await res.json()
-                for (item of data) {
+                for (const item of data) {
                     const option = document.createElement('option')
                     option.text = item.name
                     option.value = item.id
                     select.add(option)
                 }
-
-            } else alert('Error getting items')
+            } else {
+                alert('Error getting items')
+            }
         }
 
-        const main = async () => {
-            setSelectValues(categorySelect, 'https://news-api.prolabagency.com/api/v1/categories/?use_pagination=false')
-            setSelectValues(tagsSelect, 'https://news-api.prolabagency.com/api/v1/tags/?use_pagination=false')
+        const populateForm = async (news_id) => {
+            const res = await fetch(`https://news-api.prolabagency.com/api/v1/news/${news_id}/`, {
+                headers: {
+                    'Authorization': `Token ${token}`
+                }
+            })
+            if (res.status === 200) {
+                const data = await res.json()
+                newsForm.slug.value = data.slug
+                newsForm.name.value = data.name
+                newsForm.description.value = data.description
+                newsForm.content.value = data.content
+                newsForm.is_published.checked = data.is_published
+                categorySelect.value = +data.category.id
+
+                const tags = Array.from(tagsSelect.options)
+
+                tags.forEach(option => {
+                    const condition = data.tags.some(item => item.id === +option.value)
+                    if (condition) {
+                        option.selected = true
+                    }
+                })
+            } else {
+                alert('Error fetching news data')
+            }
         }
 
         newsForm.addEventListener('submit', async (e) => {
             e.preventDefault()
 
-            /*
-            const slug = newsForm.slug.value
-            const name = newsForm.name.value
-            const image = newsForm.image.files[0]
-            const description = newsForm.description.value
-            const content = newsForm.content.value
-            const is_published = newsForm.is_published.value
-            const category = +newsForm.category.value
-            
-            const tags = Array.from(newsForm.tags.selectedOptions).map(item => +item.value)
-            */
+            const body = new FormData()
+            body.append('slug', newsForm.slug.value)
+            body.append('name', newsForm.name.value)
+            if (newsForm.image.files[0]) body.append('image', newsForm.image.files[0])
+            body.append('description', newsForm.description.value)
+            body.append('content', newsForm.content.value)
+            body.append('is_published', newsForm.is_published.checked)
+            body.append('category', newsForm.category.value)
 
-            const body = new FormData(newsForm)
-            const res = await fetch('https://news-api.prolabagency.com/api/v1/news/', {
-                method: 'POST',
+            const selectedTags = Array.from(newsForm.tags.selectedOptions).map(item => +item.value)
+            selectedTags.forEach(tag => body.append('tags', tag))
+            
+
+            const res = await fetch(`https://news-api.prolabagency.com/api/v1/news/${news_id}/`, {
+                method: 'PATCH',
                 headers: {
                     'Authorization': `Token ${token}`,
-                    // 'Content-Type': 'application/json',
                 },
                 body,
             })
 
-            if (res.status == 201) {
-                alert('News created succesfully')
+            if (res.status === 200) {
+                alert('News updated successfully')
                 console.log(await res.json())
-                newsForm.clear()
             } else {
                 alert('Bad request')
                 console.log(await res.json())
             }
-
         })
 
+        const main = async () => {
+            await setSelectValues(categorySelect, 'https://news-api.prolabagency.com/api/v1/categories/?use_pagination=false')
+            await setSelectValues(tagsSelect, 'https://news-api.prolabagency.com/api/v1/tags/?use_pagination=false')
+            if (news_id) await populateForm(news_id)
+        }
 
         main()
-
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"

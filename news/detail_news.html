@@ -33,7 +33,7 @@
             const res = await fetch(`https://news-api.prolabagency.com/api/v1/news/${news_id}/`)
             if (res.status == 200) {
                 const data = await res.json()
-                news_conteiner.innerHTML = `
+                news_conteiner.innerHTML = `z
 
                         <div>
                             <img src="${data.image}" class="d-block w-100 mb-4" alt="">
